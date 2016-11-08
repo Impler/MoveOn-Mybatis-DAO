@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+	<properties resource="db.properties"/>
+	<settings>
+		<setting name="logImpl" value="LOG4J"/>
+	</settings>
+	<!-- 配置插件-->
+	<plugins>
+		<plugin interceptor="cn.impler.framework.mybatis.dao.plugin.PaginationPlugin" />
+	</plugins>
+
+	<environments default="mysql" >
+		<environment id="mysql">
+			<transactionManager type="JDBC"/>
+			<dataSource type="POOLED">
+				<property name="driver" value="${mysql.jdbc.driver}"/>
+				<property name="url" value="${mysql.jdbc.url}"/>
+				<property name="username" value="${mysql.jdbc.username}"/>
+				<property name="password" value="${mysql.jdbc.password}"/>
+			</dataSource>
+		</environment>
+		<environment id="oracle">
+			<transactionManager type="JDBC"/>
+			<dataSource type="POOLED">
+				<property name="driver" value="${oracle.jdbc.driver}"/>
+				<property name="url" value="${oracle.jdbc.url}"/>
+				<property name="username" value="${oracle.jdbc.username}"/>
+				<property name="password" value="${oracle.jdbc.password}"/>
+			</dataSource>
+		</environment>
+	</environments>
+	
+	<mappers>
+		<mapper resource="mapper/UserMapper.xml"/>
+		<mapper resource="mapper/AppMapper.xml"/>
+	</mappers>
+</configuration>
