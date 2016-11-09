@@ -12,7 +12,6 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<version.mybatis>3.3.1</version.mybatis>
 	</properties>
 
 	<dependencies>
@@ -20,11 +19,12 @@
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.10</version>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.mybatis</groupId>
 			<artifactId>mybatis</artifactId>
-			<version>${version.mybatis}</version>
+			<version>3.3.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>

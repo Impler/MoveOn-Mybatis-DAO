@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.session.SqlSession;
-import org.junit.Assert;
 
 import cn.impler.framework.mybatis.dao.dto.Pagination;
 
@@ -16,9 +15,9 @@ import cn.impler.framework.mybatis.dao.dto.Pagination;
 public class PaginationUtil {
 
 	public static <E> List<E> selectByPagination(SqlSession session, String pageStmtId, Object parameter, Pagination page){
-		Assert.assertNotNull("the page cound not be null", page);
-		Assert.assertTrue("the currentPage should be great than or equal to 1", page.getCurrentPage() >= 1);
-		Assert.assertTrue("the pageSize should be great than 0", page.getPageSize() > 0);
+		assert null != page;
+		assert page.getCurrentPage() >= 1;
+		assert page.getPageSize() > 0;
 		int offset = page.getOffset();
 		int limit = page.getPageSize();
 		RowBounds rb = new RowBounds(offset, limit);
@@ -26,7 +25,7 @@ public class PaginationUtil {
 	}
 	
 	public static <E> List<E> selectByPagination(SqlSession session, String pageStmtId, String countStmtId, Object parameter, Pagination page){
-		Assert.assertNotNull("the page cound not be null", page);
+		assert null != page;
 		if(null != countStmtId){
 			int count = (Integer) session.selectOne(countStmtId, parameter);
 			page.setCount(count);
