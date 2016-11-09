@@ -12,6 +12,7 @@ import cn.impler.framework.mybatis.dao.util.SqlSessionUtil;
 
 public class PaginationPluginTest {
 
+	// TEST MYSQL
 	@Test
 	public void testQueryUsersWithNoParams() {
 		SqlSession session = SqlSessionUtil.getSession();
@@ -31,8 +32,34 @@ public class PaginationPluginTest {
 		for(User u: users){
 			System.out.println(u);
 		}
-		
 	}
+	
+	@Test
+	public void queryUsersWithParams() {
+		SqlSession session = SqlSessionUtil.getSession();
+		Pagination page = new Pagination(5, 1);
+		User user = new User();
+		user.setUsername("KOBE");
+		List<User> users = PaginationUtil.selectByPagination(session,
+				"user.queryUsersWithParams", user, page);
+	
+		for(User u: users){
+			System.out.println(u);
+		}
+		
+		page.nextPage();
+		
+		users = PaginationUtil.selectByPagination(session,
+				"user.queryUsersWithParams", user, page);
+		
+		for(User u: users){
+			System.out.println(u);
+		}
+	}
+	
+	
+	
+	// TEST ORACLE
 	@Test
 	public void testQueryAppsWithNoParams() {
 		SqlSession session = SqlSessionUtil.getSession();

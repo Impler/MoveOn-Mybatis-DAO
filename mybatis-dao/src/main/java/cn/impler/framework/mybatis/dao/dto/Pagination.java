@@ -73,14 +73,13 @@ public class Pagination implements Serializable {
 		}
 	}
 
+	public int getOffset() {
+		return (getCurrentPage() - 1) * this.pageSize;
+	}
+	
 	@Override
 	public String toString() {
 		return "Pagination [pageSize=" + pageSize + ", currentPage="
 				+ currentPage + ", count=" + count + "]";
 	}
-
-	public int getOffset() {
-		return (getCurrentPage() - 1) * this.pageSize;
-	}
-	
 }

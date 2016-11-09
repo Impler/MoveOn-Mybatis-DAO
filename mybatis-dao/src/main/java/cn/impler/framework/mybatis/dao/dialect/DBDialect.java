@@ -1,8 +1,15 @@
 package cn.impler.framework.mybatis.dao.dialect;
 
+/**
+ * different databases may have different features.
+ * this interface aim to abstract those differences
+ * @author impler
+ *
+ */
 public interface DBDialect {
 
 	/**
+	 * build paging sql
 	 * @param origSql
 	 * @return
 	 */
@@ -11,7 +18,6 @@ public interface DBDialect {
 	/**
 	 * does the index of offset parameter, in the new pagination sql string, is
 	 * in the front of the limit parameter?
-	 * 
 	 * @return
 	 */
 	boolean isOffsetFront();

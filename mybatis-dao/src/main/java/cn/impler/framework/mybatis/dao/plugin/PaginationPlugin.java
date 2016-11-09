@@ -32,7 +32,7 @@ import cn.impler.framework.mybatis.dao.dialect.OracleDialect;
 import cn.impler.framework.mybatis.dao.util.StringUtils;
 
 /**
- * 
+ * a plugin of pagination on the database level 
  * @author impler
  *
  */
@@ -67,54 +67,110 @@ public class PaginationPlugin implements Interceptor {
 		// otherwise, it needs to rebuild the MappedStatement object to support paging query on the database level
 		
 		MappedStatement origMs = (MappedStatement) args[0];
-		Configuration config = origMs.getConfiguration();
-		
-		
-		// in order to avoid influence each other, create a new MappedStatement instance with a given suffix id
-		String paginationMsId = origMs.getId() + DaoConstant.V_PAGE_MS_ID_SUFFIX;
-		
 		Object origParameter = args[1];
-
-		if(!config.hasStatement(paginationMsId)){
-			final BoundSql boundSql = newBoundSql(config, rowBounds, origMs, origParameter);
-			SqlSource sqlSource = new SqlSource() {
-				@Override
-				public BoundSql getBoundSql(Object parameterObject) {
-					return boundSql;
-				}
-			};
-			recreateMappedStatement(origMs, sqlSource);
-		}else{
-			BoundSql boundSql = config.getMappedStatement(paginationMsId).getBoundSql(origParameter);
-			boundSql.setAdditionalParameter(DaoConstant.V_SQL_OFFSET, rowBounds.getOffset());
-			boundSql.setAdditionalParameter(DaoConstant.V_SQL_LIMIT, getLimit(rowBounds));
-		}
 		
-		// reset arguments
-		args[0] = config.getMappedStatement(paginationMsId);
+		processDBDialect(origMs.getConfiguration().getEnvironment());
 		
-		// avoid Mybatis build-in pagination
+		MappedStatement ms = changeOrRecreateMappedStatement(origMs, rowBounds, origParameter);
+		
+		// reset MappedStatement
+		args[0] = ms;
+		// reset RowBounds to default to avoid Mybatis build-in pagination
 		args[2] = RowBounds.DEFAULT;
+		
 		return invocation.proceed();
 	}
 
-	
-	private BoundSql newBoundSql(Configuration config, RowBounds rowBounds,
-			MappedStatement ms, Object origParameter) throws Exception {
+	/**
+	 * If the pagination MappedStatement instance has not exist, create a new one and put it into the registry,
+	 * otherwise, reset the limit and offset value of the RowBounds.
+	 * Most of properties of the new MappedStatement object copy from original MappedStatement object, beside SqlSource.
+	 * @param origMs
+	 * @param rowBounds
+	 * @param origParameter 
+	 * @return 
+	 * @throws Exception 
+	 */
+	private MappedStatement changeOrRecreateMappedStatement(MappedStatement origMs, RowBounds rowBounds, Object origParameter) throws Exception {
+
+		Configuration config = origMs.getConfiguration();
 		
+		// the pagination statement id
+		// in order to avoid influence each other, create a new MappedStatement instance with a given suffix id
+		String id = origMs.getId() + DaoConstant.V_PAGE_MS_ID_SUFFIX;
+
+		MappedStatement statement = null;
+		BoundSql boundSql = null;
+		
+		// pagination MappedStatement instance has not exist, create a new one
+		if(!config.hasStatement(id)){
+			final BoundSql newBounds = newBoundSql(config, origMs, origParameter);
+			SqlSource sqlSource = new SqlSource() {
+				@Override
+				public BoundSql getBoundSql(Object parameterObject) {
+					return newBounds;
+				}
+			};
+			boundSql = newBounds;
+			
+			SqlCommandType sqlCommandType = origMs.getSqlCommandType();
+			MappedStatement.Builder builder = new MappedStatement.Builder(config,id, sqlSource, sqlCommandType)
+					.resource(origMs.getResource())
+					.fetchSize(origMs.getFetchSize()).timeout(origMs.getTimeout())
+					.statementType(origMs.getStatementType())
+					.keyGenerator(origMs.getKeyGenerator())
+					.keyProperty(StringUtils.join(origMs.getKeyProperties(), ","))
+					.keyColumn(StringUtils.join(origMs.getKeyColumns(), ","))
+					.databaseId(origMs.getDatabaseId()).lang(origMs.getLang())
+					.resultOrdered(origMs.isResultOrdered())
+					.resulSets(StringUtils.join(origMs.getResulSets(), ","))
+					.resultMaps(origMs.getResultMaps())
+					.resultSetType(origMs.getResultSetType())
+					.flushCacheRequired(origMs.isFlushCacheRequired())
+					.useCache(origMs.isUseCache()).cache(origMs.getCache());
+
+			ParameterMap origParaMap = origMs.getParameterMap();
+			List<ParameterMapping> paraMappings = origParaMap.getParameterMappings();
+			ParameterMap paraMap = new ParameterMap.Builder(config, origParaMap.getId(), origParaMap.getClass(), paraMappings).build();
+			builder.parameterMap(paraMap);
+			statement = builder.build();
+			config.addMappedStatement(statement);
+		}
+		// otherwise, find it.
+		else{
+			statement = config.getMappedStatement(id);
+			boundSql = statement.getBoundSql(origParameter);
+		}
+		
+		// set/reset the limit and offset value of the (existing) MappedStatement instance
+		boundSql.setAdditionalParameter(DaoConstant.V_SQL_OFFSET, rowBounds.getOffset());
+		boundSql.setAdditionalParameter(DaoConstant.V_SQL_LIMIT, getLimit(rowBounds));
+		
+		return statement;
+	}
+	
+	/**
+	 * create a new RowBounds instance
+	 * @param config
+	 * @param ms
+	 * @param origParameter
+	 * @return
+	 * @throws Exception
+	 */
+	private BoundSql newBoundSql(Configuration config, MappedStatement ms, Object origParameter) throws Exception {
+		
+		// original BoundSql
 		BoundSql origBoundSql = ms.getBoundSql(origParameter);
 		String sql = origBoundSql.getSql();
-		processDBDialect(ms.getConfiguration().getEnvironment());
-		// 加入分页的sql
+		
+		// build the paging sql
 		sql = dialect.getPaginationSql(sql);
 		
+		// copy ParameterMapping list and add pagination parameters
 		List<ParameterMapping> paraMappings = newPaginationParameterMapping(
 				config, origBoundSql.getParameterMappings());
 		
-		BoundSql boundSql = new BoundSql(config, sql, paraMappings, origParameter);
-		boundSql.setAdditionalParameter(DaoConstant.V_SQL_OFFSET, rowBounds.getOffset());
-		boundSql.setAdditionalParameter(DaoConstant.V_SQL_LIMIT, getLimit(rowBounds));
-		return boundSql;
+		return new BoundSql(config, sql, paraMappings, origParameter);
 	}
 
 	/**
@@ -131,7 +187,7 @@ public class PaginationPlugin implements Interceptor {
 	}
 	
 	/**
-	 * add  pagination parameter, limit and offset
+	 * add pagination parameter, limit and offset
 	 * @param config
 	 * @param origParaMappings
 	 * @return
@@ -156,40 +212,6 @@ public class PaginationPlugin implements Interceptor {
 		return paraMappings;
 	}
 
-	/**
-	 * recreate a new MappedStatement instance and add it to Configuration
-	 * most of properties of the new MappedStatement object copy from original MappedStatement object, beside SqlSource
-	 * @param origMs
-	 * @param newSqlSource
-	 */
-	private void recreateMappedStatement(MappedStatement origMs, SqlSource newSqlSource) {
-		Configuration config = origMs.getConfiguration();
-		SqlCommandType sqlCommandType = origMs.getSqlCommandType();
-		// make a new statement id for pagination
-		String id = origMs.getId() + DaoConstant.V_PAGE_MS_ID_SUFFIX;
-		MappedStatement.Builder builder = new MappedStatement.Builder(config,
-				id, newSqlSource, sqlCommandType)
-				.resource(origMs.getResource())
-				.fetchSize(origMs.getFetchSize()).timeout(origMs.getTimeout())
-				.statementType(origMs.getStatementType())
-				.keyGenerator(origMs.getKeyGenerator())
-				.keyProperty(StringUtils.join(origMs.getKeyProperties(), ","))
-				.keyColumn(StringUtils.join(origMs.getKeyColumns(), ","))
-				.databaseId(origMs.getDatabaseId()).lang(origMs.getLang())
-				.resultOrdered(origMs.isResultOrdered())
-				.resulSets(StringUtils.join(origMs.getResulSets(), ","))
-				.resultMaps(origMs.getResultMaps())
-				.resultSetType(origMs.getResultSetType())
-				.flushCacheRequired(origMs.isFlushCacheRequired())
-				.useCache(origMs.isUseCache()).cache(origMs.getCache());
-
-		ParameterMap origParaMap = origMs.getParameterMap();
-		List<ParameterMapping> paraMappings = origParaMap.getParameterMappings();
-		ParameterMap paraMap = new ParameterMap.Builder(config, id, origParaMap.getClass(), paraMappings).build();
-		builder.parameterMap(paraMap);
-		MappedStatement statement = builder.build();
-		config.addMappedStatement(statement);
-	}
 
 	/**
 	 * If DBDialect instance has not initialized, a new one will be created
@@ -203,8 +225,7 @@ public class PaginationPlugin implements Interceptor {
 			return;
 		} else {
 			logger.debug("a new DBDialect instance will be created according to the specific database type");
-			DatabaseMetaData dbMetaData = environment.getDataSource()
-					.getConnection().getMetaData();
+			DatabaseMetaData dbMetaData = environment.getDataSource().getConnection().getMetaData();
 			String prdName = dbMetaData.getDatabaseProductName();
 			DBType dbType = DBType.valueOf(prdName.toUpperCase());
 			switch (dbType) {
@@ -215,8 +236,7 @@ public class PaginationPlugin implements Interceptor {
 				this.dialect = new OracleDialect();
 				break;
 			default:
-				// TODO 待确定最终的异常
-				throw new Exception("No valid database dialect found");
+				throw new IllegalArgumentException("No valid database dialect found by database product name " + prdName);
 			}
 		}
 	}

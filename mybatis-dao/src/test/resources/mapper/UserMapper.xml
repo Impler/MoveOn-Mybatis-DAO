@@ -6,4 +6,8 @@
 	<select id="queryUsersWithNoParams" resultType="cn.impler.framework.mybatis.dao.domain.User">
 		SELECT ID, USERNAME, TELNUMBER, EMAIL FROM T_USERACCOUNT 
 	</select>
+	
+	<select id="queryUsersWithParams" resultType="cn.impler.framework.mybatis.dao.domain.User">
+		SELECT ID, USERNAME, TELNUMBER, EMAIL FROM T_USERACCOUNT WHERE USERNAME LIKE CONCAT('%', #{username}, '%')
+	</select>
 </mapper>
