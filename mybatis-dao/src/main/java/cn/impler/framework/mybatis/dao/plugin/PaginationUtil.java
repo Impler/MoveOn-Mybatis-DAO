@@ -28,7 +28,7 @@ public class PaginationUtil {
 	public static <E> List<E> selectByPagination(SqlSession session, String pageStmtId, String countStmtId, Object parameter, Pagination page){
 		Assert.assertNotNull("the page cound not be null", page);
 		if(null != countStmtId){
-			int count = session.selectOne(countStmtId, parameter);
+			int count = (Integer) session.selectOne(countStmtId, parameter);
 			page.setCount(count);
 		}
 		return selectByPagination(session, pageStmtId, parameter, page);
