@@ -21,26 +21,7 @@ public class GenericEnumTypeHandler<E extends IGenericEnum> extends BaseTypeHand
 	
 	private Class<E> type;
 
-	public GenericEnumTypeHandler() {
-		super();
-	}
-
-	@SuppressWarnings("unchecked")
-	public GenericEnumTypeHandler(String typeClass) throws Exception{
-		try {
-			Class<?> clazz = Class.forName(typeClass);
-			if(IGenericEnum.class.isAssignableFrom(clazz)){
-				this.type = (Class<E>) clazz;
-			}else{
-				throw new IllegalArgumentException(clazz + " is not a IGenericEnum class");
-			}
-		} catch (Exception e) {
-			throw e;
-		}
-	}
-	
 	public GenericEnumTypeHandler(Class<E> type) {
-		this();
 		if (type == null) {
 			throw new IllegalArgumentException("Type argument cannot be null");
 		}
