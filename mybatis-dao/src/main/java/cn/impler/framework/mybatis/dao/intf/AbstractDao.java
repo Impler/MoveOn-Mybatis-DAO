@@ -5,8 +5,6 @@ import java.util.List;
 
 import javax.annotation.Resource;
 
-import junit.framework.Assert;
-
 import org.apache.ibatis.session.SqlSession;
 
 /**
@@ -30,13 +28,29 @@ public abstract class AbstractDao<T extends BaseDao<E, K>, E, K> implements Base
 		// get the generic class object by reflection
 		daoClass = (Class<T>) ((ParameterizedType) getClass()
 				.getGenericSuperclass()).getActualTypeArguments()[0];
-		Assert.assertNotNull("daoClass can not be null", daoClass);
+		if(null == daoClass){
+			throw new IllegalArgumentException("daoClass can not be null");
+		}
 	}
 	
 	public T getDao(){
-		Assert.assertNotNull("sqlSession can not be null, please check your configuration", sqlSession);
+		if(null == sqlSession){
+			throw new IllegalArgumentException("sqlSession can not be null, please check your configuration");
+		}
 		return sqlSession.getMapper(daoClass);
 	}
+	
+	public SqlSession getSqlSession() {
+		if(null == sqlSession){
+			throw new IllegalArgumentException("sqlSession can not be null, please check your configuration");
+		}
+		return sqlSession;
+	}
+
+	public void setSqlSession(SqlSession sqlSession) {
+		this.sqlSession = sqlSession;
+	}
+
 	@Override
 	public int insert(E entity) {
 		return getDao().insert(entity);
