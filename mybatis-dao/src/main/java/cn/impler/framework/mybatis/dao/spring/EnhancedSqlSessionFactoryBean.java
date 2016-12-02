@@ -100,14 +100,14 @@ public class EnhancedSqlSessionFactoryBean implements FactoryBean<SqlSessionFact
 	// --------------------------------------------------------------------------------
 	// new property of the fully qualified class name of IGenericEnum and Enum
 	// subclass
-	private String[] genericEnumClassName;
+	private String[] genericEnumClassNames;
 
-	public String[] getGenericEnumClassName() {
-		return genericEnumClassName;
+	public String[] getGenericEnumClassNames() {
+		return genericEnumClassNames;
 	}
 
-	public void setGenericEnumClassName(String[] genericEnumClassName) {
-		this.genericEnumClassName = genericEnumClassName;
+	public void setGenericEnumClassNames(String[] genericEnumClassNames) {
+		this.genericEnumClassNames = genericEnumClassNames;
 	}
 	// --------------------------------------------------------------------------------
 
@@ -549,8 +549,8 @@ public class EnhancedSqlSessionFactoryBean implements FactoryBean<SqlSessionFact
 	    }
 	    
 	    // process GenericEnum type handlers
-	    if(!isEmpty(this.genericEnumClassName)){
-	    	for (String className : this.genericEnumClassName){
+	    if(!isEmpty(this.genericEnumClassNames)){
+	    	for (String className : this.genericEnumClassNames){
 	  			Class<?> clazz = null;
 				clazz = Class.forName(className);
 				if(IGenericEnum.class.isAssignableFrom(clazz) && Enum.class.isAssignableFrom(clazz)){

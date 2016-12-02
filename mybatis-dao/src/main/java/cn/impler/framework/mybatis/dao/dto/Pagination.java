@@ -6,11 +6,13 @@ public class Pagination implements Serializable {
 
 	private static final long serialVersionUID = -8867570785672936072L;
 	
+	public static Pagination DEFAULT = new Pagination();
+	
 	// record size per page 
 	private int pageSize;
 	
 	// current page number, starts at 1
-	private int currentPage;
+	private int currentPage = 1;
 	
 	// total record count
 	private int count;
@@ -77,6 +79,19 @@ public class Pagination implements Serializable {
 		return (getCurrentPage() - 1) * this.pageSize;
 	}
 	
+	
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (null != obj && obj instanceof Pagination) {
+			Pagination page = (Pagination) obj;
+			return this.getPageSize() == page.getPageSize()
+					&& this.getCount() == page.getCount()
+					&& this.getCurrentPage() == page.getCurrentPage();
+		}
+		return false;
+	}
+
 	@Override
 	public String toString() {
 		return "Pagination [pageSize=" + pageSize + ", currentPage="
