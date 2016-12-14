@@ -9,7 +9,7 @@ public class Pagination implements Serializable {
 	public static Pagination DEFAULT = new Pagination();
 	
 	// record size per page 
-	private int pageSize;
+	private int pageSize = 10;
 	
 	// current page number, starts at 1
 	private int currentPage = 1;
