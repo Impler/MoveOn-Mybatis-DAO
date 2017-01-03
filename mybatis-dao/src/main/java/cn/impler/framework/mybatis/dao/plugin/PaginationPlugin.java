@@ -18,6 +18,7 @@ import org.apache.ibatis.plugin.Intercepts;
 import org.apache.ibatis.plugin.Invocation;
 import org.apache.ibatis.plugin.Plugin;
 import org.apache.ibatis.plugin.Signature;
+import org.apache.ibatis.reflection.MetaObject;
 import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
@@ -67,11 +68,10 @@ public class PaginationPlugin implements Interceptor {
 		// otherwise, it needs to rebuild the MappedStatement object to support paging query on the database level
 		
 		MappedStatement origMs = (MappedStatement) args[0];
-		Object origParameter = args[1];
 		
 		processDBDialect(origMs.getConfiguration().getEnvironment());
 		
-		MappedStatement ms = changeOrRecreateMappedStatement(origMs, rowBounds, origParameter);
+		MappedStatement ms = changeOrRecreateMappedStatement(origMs, rowBounds);
 		
 		// reset MappedStatement
 		args[0] = ms;
@@ -83,36 +83,39 @@ public class PaginationPlugin implements Interceptor {
 
 	/**
 	 * If the pagination MappedStatement instance has not exist, create a new one and put it into the registry,
-	 * otherwise, reset the limit and offset value of the RowBounds.
 	 * Most of properties of the new MappedStatement object copy from original MappedStatement object, beside SqlSource.
 	 * @param origMs
 	 * @param rowBounds
-	 * @param origParameter 
 	 * @return 
 	 * @throws Exception 
 	 */
-	private MappedStatement changeOrRecreateMappedStatement(MappedStatement origMs, RowBounds rowBounds, Object origParameter) throws Exception {
+	private MappedStatement changeOrRecreateMappedStatement(final MappedStatement origMs, final RowBounds rowBounds) throws Exception {
 
-		Configuration config = origMs.getConfiguration();
+		final Configuration config = origMs.getConfiguration();
 		
 		// the pagination statement id
 		// in order to avoid influence each other, create a new MappedStatement instance with a given suffix id
 		String id = origMs.getId() + DaoConstant.V_PAGE_MS_ID_SUFFIX;
 
 		MappedStatement statement = null;
-		BoundSql boundSql = null;
+		//BoundSql boundSql = null;
 		
 		// pagination MappedStatement instance has not exist, create a new one
 		if(!config.hasStatement(id)){
-			final BoundSql newBounds = newBoundSql(config, origMs, origParameter);
 			SqlSource sqlSource = new SqlSource() {
+				
+				/**
+				 * every invocation will return a new BoundSql with the new parameterObject
+				 */
 				@Override
 				public BoundSql getBoundSql(Object parameterObject) {
-					return newBounds;
+					BoundSql boundSql = newBoundSql(config, origMs, parameterObject);
+					// set the limit and offset value of the (existing) MappedStatement instance
+					boundSql.setAdditionalParameter(DaoConstant.V_SQL_OFFSET, rowBounds.getOffset());
+					boundSql.setAdditionalParameter(DaoConstant.V_SQL_LIMIT, getLimit(rowBounds));
+					return boundSql;
 				}
 			};
-			boundSql = newBounds;
-			
 			SqlCommandType sqlCommandType = origMs.getSqlCommandType();
 			MappedStatement.Builder builder = new MappedStatement.Builder(config,id, sqlSource, sqlCommandType)
 					.resource(origMs.getResource())
@@ -139,12 +142,7 @@ public class PaginationPlugin implements Interceptor {
 		// otherwise, find it.
 		else{
 			statement = config.getMappedStatement(id);
-			boundSql = statement.getBoundSql(origParameter);
 		}
-		
-		// set/reset the limit and offset value of the (existing) MappedStatement instance
-		boundSql.setAdditionalParameter(DaoConstant.V_SQL_OFFSET, rowBounds.getOffset());
-		boundSql.setAdditionalParameter(DaoConstant.V_SQL_LIMIT, getLimit(rowBounds));
 		
 		return statement;
 	}
@@ -155,9 +153,8 @@ public class PaginationPlugin implements Interceptor {
 	 * @param ms
 	 * @param origParameter
 	 * @return
-	 * @throws Exception
 	 */
-	private BoundSql newBoundSql(Configuration config, MappedStatement ms, Object origParameter) throws Exception {
+	private BoundSql newBoundSql(Configuration config, MappedStatement ms, Object origParameter) {
 		
 		// original BoundSql
 		BoundSql origBoundSql = ms.getBoundSql(origParameter);
@@ -165,12 +162,20 @@ public class PaginationPlugin implements Interceptor {
 		
 		// build the paging sql
 		sql = dialect.getPaginationSql(sql);
-		
 		// copy ParameterMapping list and add pagination parameters
 		List<ParameterMapping> paraMappings = newPaginationParameterMapping(
 				config, origBoundSql.getParameterMappings());
 		
-		return new BoundSql(config, sql, paraMappings, origParameter);
+		// BUG FIX, COPY addtionalParameter TO THE NEW BOUNDSQL S
+		BoundSql newBoundSql = new BoundSql(config, sql, paraMappings, origParameter);
+		MetaObject origBS = MetaObject.forObject(origBoundSql, config.getObjectFactory(), config.getObjectWrapperFactory(), config.getReflectorFactory());
+		MetaObject newBS = MetaObject.forObject(newBoundSql, config.getObjectFactory(), config.getObjectWrapperFactory(), config.getReflectorFactory());
+		String additionalParameters = "additionalParameters";
+		String metaParameters = "metaParameters";
+		newBS.setValue(additionalParameters, origBS.getValue(additionalParameters));
+		newBS.setValue(metaParameters, origBS.getValue(metaParameters));
+		// BUG FIX E
+		return newBoundSql;
 	}
 
 	/**
