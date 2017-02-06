@@ -45,7 +45,9 @@ public class Pagination implements Serializable {
 	}
 
 	public void setCurrentPage(int currentPage) {
-		this.currentPage = currentPage;
+		if(currentPage > 0 ){
+			this.currentPage = currentPage;
+		}
 	}
 
 	public int getCount() {
