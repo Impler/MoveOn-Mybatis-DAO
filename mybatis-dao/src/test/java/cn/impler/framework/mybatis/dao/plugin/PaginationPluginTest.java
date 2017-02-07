@@ -39,7 +39,6 @@ public class PaginationPluginTest {
 		SqlSession session = SqlSessionUtil.getSession();
 		Pagination page = new Pagination(5, 1);
 		User user = new User();
-		user.setUsername("KOBE");
 		List<User> users = PaginationUtil.selectByPagination(session,
 				"user.queryUsersWithParams", user, page);
 	
@@ -48,7 +47,7 @@ public class PaginationPluginTest {
 		}
 		
 		page.nextPage();
-		
+		user.setUsername("KOBE");
 		users = PaginationUtil.selectByPagination(session,
 				"user.queryUsersWithParams", user, page);
 		

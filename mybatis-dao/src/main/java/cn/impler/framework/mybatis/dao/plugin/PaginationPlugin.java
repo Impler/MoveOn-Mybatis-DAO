@@ -101,22 +101,16 @@ public class PaginationPlugin implements Interceptor {
 		String id = origMs.getId() + DaoConstant.V_PAGE_MS_ID_SUFFIX;
 
 		MappedStatement statement = null;
-		//BoundSql boundSql = null;
+		
+		// create a new BoundSql instance every invocation
+		BoundSql boundSql = newBoundSql(config, origMs, rowBounds, parameterObj);
 		
 		// pagination MappedStatement instance has not exist, create a new one
 		if(!config.hasStatement(id)){
-			SqlSource sqlSource = new SqlSource() {
-				
-				private BoundSql boundSql;
-				
-				@Override
-				public BoundSql getBoundSql(Object parameterObject) {
-					if(this.boundSql == null){
-						this.boundSql = newBoundSql(config, origMs, parameterObject);
-					}
-					return this.boundSql;
-				}
-			};
+			
+			// create a simple SqlSource which only holds the instance of the BoundSql at first time
+			SimpleSqlSource sqlSource = new SimpleSqlSource(boundSql);
+			
 			SqlCommandType sqlCommandType = origMs.getSqlCommandType();
 			MappedStatement.Builder builder = new MappedStatement.Builder(config,id, sqlSource, sqlCommandType)
 					.resource(origMs.getResource())
@@ -143,12 +137,10 @@ public class PaginationPlugin implements Interceptor {
 		// otherwise, find it.
 		else{
 			statement = config.getMappedStatement(id);
+			SimpleSqlSource sqlSrc = (SimpleSqlSource) statement.getSqlSource();
+			// change to the new boundSql
+			sqlSrc.setBoundSql(boundSql);
 		}
-		// call sqlSource.getBoundSql() explicitly in order to holding the boundSql instance at the very start 
-		BoundSql boundSql = statement.getSqlSource().getBoundSql(parameterObj);
-		// set the limit and offset value of the (existing) boundSql instance
-		boundSql.setAdditionalParameter(DaoConstant.V_SQL_OFFSET, rowBounds.getOffset());
-		boundSql.setAdditionalParameter(DaoConstant.V_SQL_LIMIT, getLimit(rowBounds));
 		
 		return statement;
 	}
@@ -157,10 +149,11 @@ public class PaginationPlugin implements Interceptor {
 	 * create a new RowBounds instance
 	 * @param config
 	 * @param ms
+	 * @param rowBounds
 	 * @param origParameter
 	 * @return
 	 */
-	private BoundSql newBoundSql(Configuration config, MappedStatement ms, Object origParameter) {
+	private BoundSql newBoundSql(Configuration config, MappedStatement ms, RowBounds rowBounds, Object origParameter) {
 		
 		// original BoundSql
 		BoundSql origBoundSql = ms.getBoundSql(origParameter);
@@ -181,6 +174,10 @@ public class PaginationPlugin implements Interceptor {
 		newBS.setValue(additionalParameters, origBS.getValue(additionalParameters));
 		newBS.setValue(metaParameters, origBS.getValue(metaParameters));
 		// BUG FIX E
+		
+		// set extra pagination parameter: limit and offset
+		newBoundSql.setAdditionalParameter(DaoConstant.V_SQL_OFFSET, rowBounds.getOffset());
+		newBoundSql.setAdditionalParameter(DaoConstant.V_SQL_LIMIT, getLimit(rowBounds));
 		return newBoundSql;
 	}
 
@@ -266,4 +263,27 @@ public class PaginationPlugin implements Interceptor {
 		// Not Implemented
 	}
 
+	/**
+	 * A simple SqlSource implement
+	 * @author impler
+	 * @date 2017-02-07
+	 */
+	private class SimpleSqlSource implements SqlSource{
+
+		private BoundSql boundSql;
+		
+		public SimpleSqlSource(BoundSql boundSql) {
+			super();
+			this.boundSql = boundSql;
+		}
+
+		public void setBoundSql(BoundSql boundSql) {
+			this.boundSql = boundSql;
+		}
+
+		@Override
+		public BoundSql getBoundSql(Object parameterObject) {
+			return this.boundSql;
+		}
+	}
 }
