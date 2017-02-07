@@ -71,7 +71,9 @@ public class PaginationPlugin implements Interceptor {
 		
 		processDBDialect(origMs.getConfiguration().getEnvironment());
 		
-		MappedStatement ms = changeOrRecreateMappedStatement(origMs, rowBounds);
+		Object parameterObj = args[1];
+		
+		MappedStatement ms = changeOrRecreateMappedStatement(origMs, rowBounds, parameterObj);
 		
 		// reset MappedStatement
 		args[0] = ms;
@@ -86,10 +88,11 @@ public class PaginationPlugin implements Interceptor {
 	 * Most of properties of the new MappedStatement object copy from original MappedStatement object, beside SqlSource.
 	 * @param origMs
 	 * @param rowBounds
+	 * @param parameterObj
 	 * @return 
 	 * @throws Exception 
 	 */
-	private MappedStatement changeOrRecreateMappedStatement(final MappedStatement origMs, final RowBounds rowBounds) throws Exception {
+	private MappedStatement changeOrRecreateMappedStatement(final MappedStatement origMs, RowBounds rowBounds, Object parameterObj) throws Exception {
 
 		final Configuration config = origMs.getConfiguration();
 		
@@ -104,16 +107,14 @@ public class PaginationPlugin implements Interceptor {
 		if(!config.hasStatement(id)){
 			SqlSource sqlSource = new SqlSource() {
 				
-				/**
-				 * every invocation will return a new BoundSql with the new parameterObject
-				 */
+				private BoundSql boundSql;
+				
 				@Override
 				public BoundSql getBoundSql(Object parameterObject) {
-					BoundSql boundSql = newBoundSql(config, origMs, parameterObject);
-					// set the limit and offset value of the (existing) MappedStatement instance
-					boundSql.setAdditionalParameter(DaoConstant.V_SQL_OFFSET, rowBounds.getOffset());
-					boundSql.setAdditionalParameter(DaoConstant.V_SQL_LIMIT, getLimit(rowBounds));
-					return boundSql;
+					if(this.boundSql == null){
+						this.boundSql = newBoundSql(config, origMs, parameterObject);
+					}
+					return this.boundSql;
 				}
 			};
 			SqlCommandType sqlCommandType = origMs.getSqlCommandType();
@@ -143,6 +144,11 @@ public class PaginationPlugin implements Interceptor {
 		else{
 			statement = config.getMappedStatement(id);
 		}
+		// call sqlSource.getBoundSql() explicitly in order to holding the boundSql instance at the very start 
+		BoundSql boundSql = statement.getSqlSource().getBoundSql(parameterObj);
+		// set the limit and offset value of the (existing) boundSql instance
+		boundSql.setAdditionalParameter(DaoConstant.V_SQL_OFFSET, rowBounds.getOffset());
+		boundSql.setAdditionalParameter(DaoConstant.V_SQL_LIMIT, getLimit(rowBounds));
 		
 		return statement;
 	}
