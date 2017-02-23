@@ -121,6 +121,8 @@ public class PaginationPlugin implements Interceptor {
 					.keyColumn(StringUtils.join(origMs.getKeyColumns(), ","))
 					.databaseId(origMs.getDatabaseId()).lang(origMs.getLang())
 					.resultOrdered(origMs.isResultOrdered())
+					// mybatis spelling mistake, it should be resultSet()
+					// mybatis 3.4.0 has repaired it
 					.resulSets(StringUtils.join(origMs.getResulSets(), ","))
 					.resultMaps(origMs.getResultMaps())
 					.resultSetType(origMs.getResultSetType())

@@ -12,20 +12,24 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<version.junit>4.10</version.junit>
+		<version.mybatis>3.3.1</version.mybatis>
 		<version.spring>4.3.2.RELEASE</version.spring>
+		<version.mybatis-spring>1.3.0</version.mybatis-spring>
+		<version.slf4j-api>1.6.1</version.slf4j-api>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>4.10</version>
+			<version>${version.junit}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.mybatis</groupId>
 			<artifactId>mybatis</artifactId>
-			<version>3.3.1</version>
+			<version>${version.mybatis}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>
@@ -50,12 +54,12 @@
 		<dependency>
 			<groupId>org.mybatis</groupId>
 			<artifactId>mybatis-spring</artifactId>
-			<version>1.3.0</version>
+			<version>${version.mybatis-spring}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
-			<version>1.6.1</version>
+			<version>${version.slf4j-api}</version>
 		</dependency>
 		<dependency>
 			<groupId>log4j</groupId>
